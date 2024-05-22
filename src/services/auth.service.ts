@@ -2,16 +2,12 @@ import { SECRET_KEY, FRONT_END_URL } from '@config';
 import { HttpException } from '@exceptions/httpException';
 import { DataStoredInToken, TokenData } from '@interfaces/auth.interface';
 import { User, GoogleSignInBody } from '@interfaces/users.interface';
-import { CarouseImages } from '@interfaces/ad.interface';
 import { UserModel } from '@models/users.model';
-import { CarouselModel } from '@models/carousel.model';
 import { compare, hash } from 'bcrypt';
 import { sign, verify } from 'jsonwebtoken';
 import { Service } from 'typedi';
-import crypto from 'crypto';
 import { sendForgotPasswordEmail, sendWelcomEmail } from '../utils/mailer';
 import { verifyGoogleToken } from '../utils/utils'
-import { FolderModel } from '@/models/folder.model';
 
 const createToken = (user: User): TokenData => {
   const dataStoredInToken: DataStoredInToken = {
@@ -48,7 +44,6 @@ export class AuthService {
       const tokenData = await createToken(createUserData).token;
       await sendWelcomEmail(userData.email, userData.fullName);
       await UserModel.updateOne({ _id: createUserData._id }, { token: tokenData })
-      await FolderModel.create({ name: 'Default', userId: createUserData._id })
       return { user: createUserData, token: tokenData };
     }
   }
@@ -75,7 +70,6 @@ export class AuthService {
     const user = await UserModel.create(userObj)
     const tokenData = await createToken(user).token;
     await UserModel.updateOne({ _id: user._id }, { token: tokenData })
-    await FolderModel.create({ name: 'Default', userId: user._id })
 
     return { user, token: tokenData };
   }
@@ -133,11 +127,6 @@ export class AuthService {
     return { findUser, tokenData };
   }
 
-  public async carousel(): Promise<CarouseImages[]> {
-    const carousel: CarouseImages[] = await CarouselModel.find({ isActive: true }, { imageUrl: 1, _id: 0 }).sort('imageUrl');
-    if (!carousel) throw new HttpException(409, 'Carousel is not available');
-    return carousel;
-  }
   public async resetPassword(userData: User): Promise<User> {
     const { token, password } = userData;
     const decoded = verifyToken(token);
